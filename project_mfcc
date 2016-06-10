@@ -1,0 +1,132 @@
+import numpy as np
+from scipy.fftpack import fft,dct
+from scipy.io import wavfile
+from scipy import signal
+from hz2mel import hz2mel
+from mel2hz import mel2hz
+from matplotlib import pyplot as plt
+import math
+##from scikits.audiolab import wavread
+def project_mfcc(filename, win_size, hop_size, min_freq, max_freq, num_mel_filts,n_dct):
+
+    ## Read file
+    
+    Fs, input1 = wavfile.read(filename)
+    times = np.arange(len(input1))/float(Fs)
+##    [input2,fs] = wavread(filename)
+    plt.figure(2)
+    plt.plot(times, input1)
+    plt.savefig('Waveplot.pdf', dpi = 100)
+    plt.show()
+    print " Input 1 = ", input1
+    
+##    input1 = np.array(input1)
+##    print " After arraying it = ", input1
+    input1 = input1/(2**15)
+    no_of_DFT_points = 1024
+    
+    print input1
+    ## Computing spectrogram with Hamming window and given window and hop size
+
+    wh = signal.hamming(win_size) # Hamming window
+    total_frames = len(input1)/hop_size
+    total_frames = int(total_frames)
+    print "Length of Hamming window = ", np.shape(wh)
+    print "Total Frames = ", total_frames
+    #print
+    #print
+    #print
+    for frame_no in range(1,total_frames+1):
+        start_index = hop_size*(frame_no-1)+1
+        end_index = start_index + win_size - 1
+        
+        if (end_index > length(input1)):
+            input_frame = input1[start_index : length(input1)+1]
+            input_frame = input_frame.append(numpy.zeros(end_index - length(input),1))
+            break
+        else:
+            input_frame = input1[start_index:(end_index+1)]
+       
+        rows, columns = rowscolumns(frame_no)
+        input_frame = [[0 for random1 in range(1,rows+1)]for random2 in range(1,columns+1)]
+        spectrogram = [[0 for random1 in range(1,rows+1)]for random2 in range(1,columns+1)]
+        for rr in range(1,rows+1):
+            for cc in range(1,rows+1):
+                input_frame[rr][cc] = input_frame * wh
+                spectrogram[rr][cc] = fft(input_frame[rr][cc])
+        print "Spectrogram = ", spectrogram
+
+
+        
+    ## Creating mel filter bank - Initializing variables
+    mel_freq_lower = hz2mel(min_freq)
+    mel_freq_upper = hz2mel(max_freq)
+
+    mel_spacing = ((mel_freq_upper - mel_freq_lower)/(num_mel_filts+1))
+##    mel_filter_cutoffs = [0 for melfiltercutoffnumber in range(1,num_mel_filts+2)]
+##    mel_filter_cutoffs[1] = mel_freq_lower
+##    mel_filter_cutoffs = mel_filter_cutoffs[1:]
+    mel_filter_cutoffs = []
+    print "Mel Frequency lower =", mel_freq_lower
+    print "Mel Frequency higher =", mel_freq_upper
+    print "Mel Spacing =", mel_spacing
+##    print len(mel_filter_cutoffs)
+    for filter_no in range(1,num_mel_filts+2):
+        mel_filter_cutoffs.append(mel_freq_lower + filter_no * mel_spacing)
+    print
+    print
+    print "Mel Filter Cutoffs = ", mel_filter_cutoffs
+##    mel_filter_cutoffs[filter_no+2] = mel_freq_upper
+    print
+    print
+    print
+    linear_filter_cutoffs = mel2hz(mel_filter_cutoffs)
+    linear_filter_cutoffs_discrete =[]
+    for cutoff_values in linear_filter_cutoffs:
+        discretizing_values = cutoff_values * no_of_DFT_points/Fs
+        linear_filter_cutoffs_discrete.append(discretizing_values)
+    print "Length of linear filters = ", len(linear_filter_cutoffs_discrete)
+    print "No of DFT points = ", no_of_DFT_points
+
+    
+    
+    ## Creating mel filter bank - Implementing variables in formulae 
+    filter1 = np.zeros((40,1024))
+    
+    for i in range(2,len(linear_filter_cutoffs_discrete)+1):
+##        print i
+##        print int(linear_filter_cutoffs_discrete[i-2])
+        for j in range(int(linear_filter_cutoffs_discrete[i-2]),int(linear_filter_cutoffs_discrete[i-1])):
+            if j == linear_filter_cutoffs_discrete[i-1]:
+##                one_point_horizontal = i-1
+##                one_point_vertical = j+1
+                np.insert(filter1,i-2,1)
+                np.insert(filter1,j+1,1)
+            elif j < linear_filter_cutoffs_discrete[i-1]:
+                np.insert(filter1,i-2,((j-linear_filter_cutoffs_discrete[i-2])/(linear_filter_cutoffs_discrete[i-1] - linear_filter_cutoffs_discrete[i-2])))
+                np.insert(filter1,j+1,((j-linear_filter_cutoffs_discrete[i-2])/(linear_filter_cutoffs_discrete[i-1] - linear_filter_cutoffs_discrete[i-2])))
+            else:
+                np.insert(filter1,i-2,((linear_filter_cutoffs_discrete[i]-j)/(linear_filter_cutoffs_discrete[i] - linear_filter_cutoffs_discrete[i-1])))
+                np.insert(filter1,j+1,((linear_filter_cutoffs_discrete[i]-j)/(linear_filter_cutoffs_discrete[i] - linear_filter_cutoffs_discrete[i-1])))
+            
+    print "Filter dimensions = ", np.shape(filter1)
+    print 
+
+
+
+
+    ## Computing mel power spectrum and dct
+    #for j in range(1,length(spectrogram)+1):
+     #   for i in range(1,num_mel_filts+1):
+    mel_filtered_signal = 10*math.log(sum((spectrogram * np.filter1)^2))
+    #mel_filtered_signal(i,j) = mel_filtered_signal(i,j)/sum(filter(i,:).^2);   % Normalising by filter energy
+        
+    np.mfccs_full = dct(mel_filtered_signal)
+    for x in range(1,mfccs_full,n_dct):
+        mfccs = abs(x)
+
+    
+    hop_length_sec = hop_size/Fs
+    fs_mfcc = round(1/hop_length_sec)
+    print fs_mfcc
+    return mfccs
